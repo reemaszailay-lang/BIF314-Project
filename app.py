@@ -179,24 +179,7 @@ if st.button("Analyze"):
                     f"• {country}"
                 )
 
-            # Data Sources
-            st.markdown("---")
-
-            st.subheader(
-                "Data Sources"
-            )
-
-            st.write(
-                "• NCBI (Genomic Sequences)"
-            )
-
-            st.write(
-                "• iNaturalist (Common Names & Images)"
-            )
-
-            st.write(
-                "• GBIF (Distribution Data)"
-            )
+           
 
         except Exception as e:
 
