@@ -1,26 +1,44 @@
 import streamlit as st
+import pandas as pd
 from Bio import Entrez
 from Bio import SeqIO
 from io import StringIO
 import requests
 
+# ---------------------------------
 # Page Title
+# ---------------------------------
+
 st.title("NCBI Biodiversity Tool")
 
-# Your Email
+# ---------------------------------
+# NCBI Email
+# ---------------------------------
+
 Entrez.email = "446005500@pnu.edu.sa"
 
+# ---------------------------------
 # User Input
-acc_number = st.text_input("Enter Accession Number")
+# ---------------------------------
 
+acc_number = st.text_input(
+    "Enter Accession Number"
+)
+
+# ---------------------------------
 # Analyze Button
+# ---------------------------------
+
 if st.button("Analyze"):
 
     if acc_number:
 
         try:
 
-            # NCBI Data
+            # -------------------------
+            # NCBI
+            # -------------------------
+
             handle = Entrez.efetch(
                 db="nucleotide",
                 id=acc_number,
@@ -42,12 +60,19 @@ if st.button("Analyze"):
             parts = description.split()
 
             if len(parts) >= 3:
-                scientific_name = f"{parts[1]} {parts[2]}"
+                scientific_name = (
+                    f"{parts[1]} {parts[2]}"
+                )
             else:
                 scientific_name = "Unknown"
 
-            # Display Genomic Information
-            st.subheader("Genomic Information")
+            # -------------------------
+            # Genomic Information
+            # -------------------------
+
+            st.subheader(
+                "Genomic Information"
+            )
 
             st.write(
                 f"Scientific Name: {scientific_name}"
@@ -57,7 +82,6 @@ if st.button("Analyze"):
                 f"Sequence Length: {len(sequence)} bp"
             )
 
-            # GC Content
             gc_count = (
                 sequence.count("G")
                 + sequence.count("C")
@@ -71,7 +95,10 @@ if st.button("Analyze"):
                 f"GC Content: {gc_percent:.2f}%"
             )
 
+            # -------------------------
             # iNaturalist
+            # -------------------------
+
             inat_url = (
                 f"https://api.inaturalist.org/v1/taxa"
                 f"?q={scientific_name}&per_page=1"
@@ -112,7 +139,10 @@ if st.button("Analyze"):
                         caption=scientific_name
                     )
 
+            # -------------------------
             # GBIF
+            # -------------------------
+
             gbif_url = (
                 f"https://api.gbif.org/v1/species/match"
                 f"?name={scientific_name}"
@@ -127,6 +157,7 @@ if st.button("Analyze"):
             )
 
             countries = []
+            locations = []
 
             if species_key:
 
@@ -156,16 +187,38 @@ if st.button("Analyze"):
                             country
                         )
 
-            # Distribution Section
+                    lat = item.get(
+                        "decimalLatitude"
+                    )
+
+                    lon = item.get(
+                        "decimalLongitude"
+                    )
+
+                    if (
+                        lat is not None
+                        and lon is not None
+                    ):
+                        locations.append(
+                            [lat, lon]
+                        )
+
+            # -------------------------
+            # Countries
+            # -------------------------
+
             st.subheader(
                 "Distribution Countries"
             )
 
             if "Saudi Arabia" in countries:
+
                 st.success(
                     "✅ Saudi Arabia Found"
                 )
+
             else:
+
                 st.warning(
                     "❌ Saudi Arabia not found in retrieved GBIF records"
                 )
@@ -175,11 +228,36 @@ if st.button("Analyze"):
             )
 
             for country in countries[:40]:
+
                 st.write(
                     f"• {country}"
                 )
 
-           
+            # -------------------------
+            # Map
+            # -------------------------
+
+            st.subheader(
+                "Distribution Map"
+            )
+
+            if locations:
+
+                map_df = pd.DataFrame(
+                    locations,
+                    columns=[
+                        "lat",
+                        "lon"
+                    ]
+                )
+
+                st.map(map_df)
+
+            else:
+
+                st.write(
+                    "No map data available"
+                )
 
         except Exception as e:
 
