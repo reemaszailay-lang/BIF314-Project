@@ -1,126 +1,119 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-get_ipython().system('pip install biopython requests pandas')
-
-
-# In[2]:
-
-
+import streamlit as st
 from Bio import Entrez
 from Bio import SeqIO
 from io import StringIO
 import requests
 
-Entrez.email ="446005500@pnu.edu.sa"
+st.title("NCBI Biodiversity Tool")
 
-acc_number = input("Enter Accession Number: ")
+Entrez.email = "446005500@pnu.edu.sa"
 
-handle = Entrez.efetch(
-    db="nucleotide",
-    id=acc_number,
-    rettype="fasta",
-    retmode="text"
-)
+acc_number = st.text_input("Enter Accession Number")
 
-fasta_data = handle.read()
-handle.close()
+if st.button("Analyze"):
 
-record = SeqIO.read(StringIO(fasta_data), "fasta")
+    if acc_number:
 
-description = record.description
-sequence = str(record.seq)
+        try:
 
-parts = description.split()
+            handle = Entrez.efetch(
+                db="nucleotide",
+                id=acc_number,
+                rettype="fasta",
+                retmode="text"
+            )
 
-if len(parts) >= 3:
-    scientific_name = f"{parts[1]} {parts[2]}"
-else:
-    scientific_name = "Unknown"
+            fasta_data = handle.read()
+            handle.close()
 
-print("Scientific Name:", scientific_name)
-print("Sequence Length:", len(sequence), "bp")
+            record = SeqIO.read(
+                StringIO(fasta_data),
+                "fasta"
+            )
 
+            description = record.description
+            sequence = str(record.seq)
 
-# In[3]:
+            parts = description.split()
 
+            if len(parts) >= 3:
+                scientific_name = f"{parts[1]} {parts[2]}"
+            else:
+                scientific_name = "Unknown"
 
-inat_url = f"https://api.inaturalist.org/v1/taxa?q={scientific_name}&per_page=1"
+            st.subheader("Genomic Information")
 
-response = requests.get(inat_url).json()
+            st.write(f"Scientific Name: {scientific_name}")
+            st.write(f"Sequence Length: {len(sequence)} bp")
 
-results = response.get("results", [])
+            gc_count = sequence.count("G") + sequence.count("C")
+            gc_percent = (gc_count / len(sequence)) * 100
 
-if results:
+            st.write(f"GC Content: {gc_percent:.2f}%")
 
-    taxon = results[0]
+            inat_url = (
+                f"https://api.inaturalist.org/v1/taxa"
+                f"?q={scientific_name}&per_page=1"
+            )
 
-    common_name = taxon.get(
-        "preferred_common_name",
-        "Not Available"
-    )
+            response = requests.get(inat_url).json()
 
-    print("Common Name:", common_name)
+            results = response.get("results", [])
 
-    if taxon.get("default_photo"):
+            if results:
+                taxon = results[0]
 
-        image_url = taxon["default_photo"]["medium_url"]
+                common_name = taxon.get(
+                    "preferred_common_name",
+                    "Not Available"
+                )
 
-        print("Image URL:")
-        print(image_url)
+                st.write(f"Common Name: {common_name}")
 
-else:
-    print("No data found")
+                if taxon.get("default_photo"):
+                    image_url = taxon["default_photo"]["medium_url"]
 
+                    st.image(
+                        image_url,
+                        caption=scientific_name
+                    )
 
-# In[4]:
+            gbif_url = (
+                f"https://api.gbif.org/v1/species/match"
+                f"?name={scientific_name}"
+            )
 
+            gbif_data = requests.get(gbif_url).json()
 
-gbif_url = f"https://api.gbif.org/v1/species/match?name={scientific_name}"
+            species_key = gbif_data.get("speciesKey")
 
-gbif_data = requests.get(gbif_url).json()
+            countries = []
 
-species_key = gbif_data.get("speciesKey")
+            if species_key:
 
-countries = []
+                occ_url = (
+                    f"https://api.gbif.org/v1/occurrence/search"
+                    f"?speciesKey={species_key}&limit=50"
+                )
 
-if species_key:
+                occ_data = requests.get(
+                    occ_url
+                ).json()
 
-    occ_url = (
-        f"https://api.gbif.org/v1/occurrence/search"
-        f"?speciesKey={species_key}&limit=50"
-    )
+                for item in occ_data.get(
+                    "results",
+                    []
+                ):
 
-    occ_data = requests.get(occ_url).json()
+                    country = item.get("country")
 
-    for item in occ_data.get("results", []):
+                    if country and country not in countries:
+                        countries.append(country)
 
-        country = item.get("country")
+            st.subheader("Distribution Countries")
 
-        if country and country not in countries:
-            countries.append(country)
+            for country in countries[:10]:
+                st.write(f"• {country}")
 
-print("Distribution Countries:")
-
-for country in countries[:10]:
-    print("-", country)
-
-
-# In[5]:
-
-
-gc_count = sequence.count("G") + sequence.count("C")
-
-gc_percent = (gc_count / len(sequence)) * 100
-
-print("GC Content:", round(gc_percent, 2), "%")
-
-
-# In[ ]:
-
-
-
-
+        except Exception as e:
+            st.error(f"Error: {e}")
