@@ -110,10 +110,17 @@ if st.button("Analyze"):
                     if country and country not in countries:
                         countries.append(country)
 
-            st.subheader("Distribution Countries")
 
-            for country in countries[:40]:
-                st.write(f"• {country}")
+          st.subheader("Distribution Countries")
+
+if "Saudi Arabia" in countries:
+    st.write("✅ Saudi Arabia Found")
+else:
+    st.write("❌ Saudi Arabia not found in retrieved GBIF records")
+
+for country in countries[:40]:
+    st.write(f"• {country}")
+
 
         except Exception as e:
             st.error(f"Error: {e}")
