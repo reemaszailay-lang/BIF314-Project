@@ -112,7 +112,7 @@ if st.button("Analyze"):
 
             st.subheader("Distribution Countries")
 
-            for country in countries[:20]:
+            for country in countries[:30]:
                 st.write(f"• {country}")
 
         except Exception as e:
